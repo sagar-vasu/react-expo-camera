@@ -7,7 +7,6 @@ class Welcome extends React.Component {
       name: "Welcome Screen",
     };
   }
-
   render() {
     return (
       <View style={styles.container}>

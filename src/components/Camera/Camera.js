@@ -5,16 +5,10 @@ import {
   View,
   TouchableOpacity,
   Platform,
-  Vibration,
-  BackHandler,
 } from "react-native";
 import { Camera } from "expo-camera";
 import * as Permissions from "expo-permissions";
-import {
-  FontAwesome,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { CustomButton } from "../";
 
