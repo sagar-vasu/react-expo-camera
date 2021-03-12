@@ -5,11 +5,19 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Image,
-  BackHandler,
+  Modal,
   FlatList,
+  Text,
 } from "react-native";
-import { Camera } from "../../components";
-import { FontAwesome } from "@expo/vector-icons";
+import { Camera, CustomButton } from "../../components";
+import {
+  FontAwesome,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import RBSheet from "react-native-raw-bottom-sheet";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Item = ({ url }) => {
@@ -24,7 +32,7 @@ export default class Example extends Component {
     super();
     this.state = {
       showCamera: false,
-      photos: [],
+      allPhotos: [],
     };
   }
 
@@ -36,68 +44,136 @@ export default class Example extends Component {
   };
 
   // it will get image uri from camera component
-  getResponse = async (photo) => {
-    let { photos } = this.state;
-    photos.push({
-      url: photo,
-    });
-    try {
-      const jsonValue = JSON.stringify(photos);
-      this.setState({
-        showCamera: false,
-        photos,
-      });
-      await AsyncStorage.setItem("photos", jsonValue);
-    } catch (e) {}
-  };
-
-  backAction = () => {
+  getResponse = async (uri) => {
+    let photo = {
+      uri,
+    };
+    const savephots = this.state.allPhotos;
+    savephots.push(photo);
     this.setState({
       showCamera: false,
+      allPhotos: savephots,
     });
+    this.RBSheet.close();
+
+    try {
+      const jsonValue = JSON.stringify(savephots);
+      await AsyncStorage.setItem("images", jsonValue);
+    } catch (e) {
+      // saving error
+    }
   };
+
+  pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+    let photo = {
+      uri: result.uri,
+    };
+    const savephots = this.state.allPhotos;
+    savephots.push(photo);
+    this.setState({
+      showCamera: false,
+      allPhotos: savephots,
+    });
+    this.RBSheet.close();
+    try {
+      const jsonValue = JSON.stringify(savephots);
+      await AsyncStorage.setItem("images", jsonValue);
+    } catch (e) {
+      // saving error
+    }
+  };
+
   async componentDidMount() {
     try {
-      const { photos } = this.state;
-      const jsonValue = await AsyncStorage.getItem("photos");
-      const allPhotos = JSON.parse(jsonValue);
+      const jsonValue = await AsyncStorage.getItem("images");
+      const check = jsonValue != null ? JSON.parse(jsonValue) : null;
       this.setState({
-        photos: allPhotos,
+        allPhotos: check,
       });
-    } catch (e) {}
-    BackHandler.addEventListener("hardwareBackPress", this.backAction);
+    } catch (e) {
+      // error reading value
+    }
   }
 
   render() {
-    const { photos } = this.state;
-    const renderItem = ({ item }) => <Item url={item.url} />;
+    const { allPhotos, showCamera } = this.state;
+    const renderItem = ({ item }) => <Item url={item.uri} />;
 
     return (
       <SafeAreaView style={styles.safeView}>
         {this.state.showCamera ? (
-          <Camera
-            path={this.props.navigation}
-            sendResponse={this.getResponse}
-          />
+          <Modal
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => {
+              this.RBSheet.close();
+              this.setState({
+                showCamera: !showCamera,
+              });
+            }}
+            visible={showCamera}
+          >
+            <View style={{ flex: 1 }}>
+              <Camera
+                path={this.props.navigation}
+                sendResponse={this.getResponse}
+              />
+            </View>
+          </Modal>
         ) : (
           <View style={{ flex: 1 }}>
-            {photos && photos ? (
+            {allPhotos && allPhotos ? (
               <FlatList
-                data={photos}
+                data={allPhotos}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.url}
               />
             ) : null}
             <View style={styles.footer}>
               <TouchableOpacity
-                onPress={this.handelPickAvatar}
+                onPress={() => this.RBSheet.open()}
                 activeOpacity={0.5}
               >
-                <FontAwesome name="camera" style={styles.icon} />
+                <FontAwesome name="plus" style={styles.icon} />
               </TouchableOpacity>
             </View>
           </View>
         )}
+        <RBSheet
+          ref={(ref) => {
+            this.RBSheet = ref;
+          }}
+          height={350}
+          openDuration={250}
+          customStyles={{
+            container: {
+              alignItems: "center",
+            },
+          }}
+        >
+          <View style={styles.container}>
+            <Text style={styles.title}>Upload Photo</Text>
+            <Text style={styles.value}>Choose Your Profile Picture</Text>
+            <CustomButton
+              name="Take Photo"
+              onPress={() => this.handelPickAvatar()}
+              color="red"
+            />
+            <CustomButton
+              onPress={() => this.pickImage()}
+              name="Choose From Library"
+              color="red"
+            />
+            <CustomButton
+              onPress={() => this.RBSheet.close()}
+              name="Cancel"
+              color="red"
+            />
+          </View>
+        </RBSheet>
       </SafeAreaView>
     );
   }
@@ -142,5 +218,18 @@ const styles = StyleSheet.create({
   icon: {
     color: "white",
     fontSize: 22,
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 18,
+    textAlign: "center",
+    marginVertical: 5,
+  },
+  value: {
+    fontWeight: "bold",
+    fontSize: 15,
+    textAlign: "center",
+    marginVertical: 5,
+    color: "grey",
   },
 });
